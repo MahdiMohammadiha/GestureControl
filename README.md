@@ -25,7 +25,7 @@ This project is a gesture-controlled music player that allows you to control mus
 ## 🧱 Project Structure
 
 ```
-gesture-music-controller/
+gesture_control/
 │
 ├── main.py            # Entry point
 ├── modules/

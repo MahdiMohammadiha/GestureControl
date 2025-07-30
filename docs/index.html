@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Gesture Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <button id="toggle-theme" title="Toggle theme">🌙</button>
+        <h1>Gesture Control</h1>
+
+        <p>
+            This project is a gesture-controlled music player that allows you to control music playback using simple
+            hand gestures in front of your webcam. It uses computer vision to detect hand positions and interprets
+            gestures to play, pause, or switch tracks.
+        </p>
+
+        <h2>✨ Features</h2>
+        <ul>
+            <li>Real-time hand tracking with MediaPipe</li>
+            <li>Control music playback using gestures</li>
+            <li>GUI built with PyQt6</li>
+            <li>Local <code>.mp3</code> music playback using <code>pygame</code></li>
+            <li>Optional GUI buttons for manual control</li>
+        </ul>
+
+        <h2>✋ Supported Gestures</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Gesture</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>✌️ V Sign</td>
+                    <td>Play Music</td>
+                </tr>
+                <tr>
+                    <td>✊ Fist</td>
+                    <td>Pause Music</td>
+                </tr>
+                <tr>
+                    <td>👉 Thumb Right</td>
+                    <td>Next Track</td>
+                </tr>
+                <tr>
+                    <td>👈 Thumb Left</td>
+                    <td>Previous Track</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🧱 Project Structure</h2>
+        <pre><code>gesture_control/
+│
+├── main.py              # Entry point
+├── modules/
+│   ├── camera.py        # Webcam frame capture
+│   ├── gesture.py       # Gesture detection
+│   ├── music_player.py  # Music playback control
+│   ├── controller.py    # Gesture → Action mapping
+│   └── gui.py           # PyQt6 GUI
+└── music/               # Folder for your MP3 files
+</code></pre>
+
+        <h2>⚙️ Requirements</h2>
+        <pre><code>pip install -r requirements.txt</code></pre>
+        <p>Contents of <code>requirements.txt</code>:</p>
+        <pre><code>opencv-python
+mediapipe
+PyQt6
+pygame
+</code></pre>
+
+        <h2>▶️ How to Use</h2>
+        <ol>
+            <li>Place your <code>.mp3</code> music files in the <code>music/</code> folder.</li>
+            <li>Run the program:</li>
+        </ol>
+        <pre><code>python main.py</code></pre>
+        <p>Perform a gesture in front of your webcam and watch it control your music!</p>
+
+        <h2>🧪 Example Usage</h2>
+        <ul>
+            <li>Show ✌️ to start music</li>
+            <li>Show ✊ to stop music</li>
+            <li>Point 👉 to skip to next</li>
+            <li>Point 👈 to go back</li>
+        </ul>
+
+        <p>
+            🔗 View the project on
+            <a href="https://github.com/MahdiMohammadiha/GestureControl" target="_blank">GitHub</a>
+        </p>
+
+        <footer>
+            Created by <strong>Mahdi Mohammadiha</strong> &mdash; &copy; 2025
+        </footer>
+    </div>
+
+    <script>
+        const toggleButton = document.getElementById('toggle-theme');
+        const root = document.documentElement;
+        const savedTheme = localStorage.getItem('theme');
+
+        if (savedTheme === 'dark') {
+            root.classList.add('dark');
+            toggleButton.textContent = '🌞';
+        }
+
+        toggleButton.addEventListener('click', () => {
+            const isDark = root.classList.toggle('dark');
+            toggleButton.textContent = isDark ? '🌞' : '🌙';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    </script>
+
+</body>
+
+</html>

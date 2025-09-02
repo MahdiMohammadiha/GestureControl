@@ -1,6 +1,4 @@
 from typing import List
-from .utils import dist, palm_center
-from .config import FIST_DISTANCE_RATIO, FIST_REQUIRED_FOLDED
 
 
 Point = tuple[int, int]

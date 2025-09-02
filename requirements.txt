@@ -3,3 +3,4 @@ opencv-python<4.12
 mediapipe<0.11
 pygame<2.7
 pyqt6<6.10
+playsound==1.2.2

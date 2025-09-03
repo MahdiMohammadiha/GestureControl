@@ -35,6 +35,13 @@ from .stateless import (
 )
 from .utils import palm_center, play_sound_effect
 
+# Import refactored detector implementations
+from .detectors.stop import detect_stop as _detect_stop
+from .detectors.swipe import detect_swipe as _detect_swipe
+from .detectors.volume import detect_volume as _detect_volume
+from .detectors.reserve import detect_reserve as _detect_reserve
+from .detectors.like_dislike import detect_like_dislike as _detect_like_dislike
+
 
 class HandTracker:
     """
@@ -221,84 +228,32 @@ class HandTracker:
         - movement_threshold resets the open-timer if the hand moves too much while open.
         - Returns "Pause" when open->fist gesture confirmed, otherwise None.
         """
-        now = time()
-
-        # print(f"Fist: {self.fist()}, ")
-
-        # Movement tracking while open: if moved too much, restart the open timer
-        if self.landmarks and self.open_palm():
-            # get current center (if available)
-            if self.hand_center_positions:
-                cx, cy = self.hand_center_positions[-1]
-                if self._open_reference_pos is None:
-                    self._open_reference_pos = (cx, cy)
-                else:
-                    rx, ry = self._open_reference_pos
-                    if (
-                        abs(cx - rx) > movement_threshold
-                        or abs(cy - ry) > movement_threshold
-                    ):
-                        # movement too large => restart was_open timer and update reference pos
-                        # we directly reset the internal "tentative" open-start used by was_open_recently
-                        self._wo_open_start = now
-                        self._open_reference_pos = (cx, cy)
-        else:
-            # not currently open (or no landmarks) -> clear positional reference
-            self._open_reference_pos = None
-
-        # update/ask was_open_recently (this also updates internal _wo_* state)
-        was_open = self.was_open_recently(
-            now=now, open_duration=open_duration, validity_duration=validity_duration
+        return _detect_stop(
+            self,
+            open_duration=open_duration,
+            validity_duration=validity_duration,
+            fist_confirm=fist_confirm,
+            movement_threshold=movement_threshold,
         )
 
-        # Fist handling: require was_open_recently True then a stable fist for fist_confirm seconds
-        if self.fist():
-            if was_open:
-                if self._fist_start_time is None:
-                    self._fist_start_time = now
-                elif now - self._fist_start_time >= fist_confirm:
-                    # Confirmed open-then-fist -> trigger Pause
-                    # Reset related states so gesture won't immediately re-trigger
-                    self._fist_start_time = None
-
-                    # clear open-related states (both old and the was_open_recently internals)
-                    self._open_start_time = None
-                    self._open_reference_pos = None
-
-                    self._wo_confirmed = False
-                    self._wo_was_open_until = 0.0
-                    self._wo_open_start = None
-
-                    return "Pause"
-            else:
-                # Fist but no recent-open -> don't accumulate fist time
-                # Only keep fist timer if was_open still valid; otherwise reset
-                self._fist_start_time = None
-        else:
-            # Not fist: if was_open is expired/false, clear fist timer
-            if not was_open:
-                self._fist_start_time = None
-
-        return None
-
-    def detect_swipe(self):
+    def detect_swipe(
+        self,
+        open_duration: float = DEFAULT_OPEN_DURATION,
+        validity_duration: float = DEFAULT_VALIDITY_DURATION,
+        swipe_x_threshold: int = SWIPE_X_THRESHOLD,
+        swipe_y_tolerance: int = SWIPE_Y_TOLERANCE,
+    ):
         """
         Detect horizontal swipe when hand is open.
         Returns: "Next", "Previous", or None
         """
-        if len(self.hand_center_positions) < 3:
-            return None
-
-        if not self.open_palm():
-            return None
-
-        dx = self.hand_center_positions[-1][0] - self.hand_center_positions[0][0]
-        dy = self.hand_center_positions[-1][1] - self.hand_center_positions[0][1]
-
-        if abs(dx) > SWIPE_X_THRESHOLD and abs(dy) <= SWIPE_Y_TOLERANCE:
-            self.hand_center_positions.clear()
-            return "Next" if dx > 0 else "Previous"
-        return None
+        return _detect_swipe(
+            self,
+            open_duration=open_duration,
+            validity_duration=validity_duration,
+            swipe_x_threshold=swipe_x_threshold,
+            swipe_y_tolerance=swipe_y_tolerance,
+        )
 
     def detect_volume(
         self,
@@ -320,61 +275,14 @@ class HandTracker:
         Returns: ("VolumeUp", delta), ("VolumeDown", delta), or None
         where delta is proportional to movement.
         """
-        now = time()
-
-        # Check open palm confirmation
-        was_open = self.was_open_recently(
-            now=now, open_duration=open_duration, validity_duration=validity_duration
+        return _detect_volume(
+            self,
+            open_duration=open_duration,
+            validity_duration=validity_duration,
+            pinch_threshold=pinch_threshold,
+            volume_scale=volume_scale,
+            max_x_movement=max_x_movement,
         )
-        if not was_open or not self.landmarks:
-            return None
-
-        lm = self.landmarks[0]
-
-        # The index finger must be closed.
-        fs = _get_fingers_status(lm)  # [thumb, index, middle, ring, pinky]
-        if not fs or fs[1]:  # If the index finger is open (True) => reject
-            return None
-
-        #  Limit movement on the X axis
-        cx, cy = palm_center(lm)
-        if not hasattr(self, "_volume_ref_x") or self._volume_ref_x is None:
-            self._volume_ref_x = cx
-        if abs(cx - self._volume_ref_x) > max_x_movement:
-            return (
-                None  # If the hand moves too much in the horizontal direction => reject
-            )
-
-        # Check pinch (thumb tip close to index tip)
-        thumb_tip, index_tip = lm[4], lm[8]
-        pinch_dist = (
-            (thumb_tip[0] - index_tip[0]) ** 2 + (thumb_tip[1] - index_tip[1]) ** 2
-        ) ** 0.5
-        if pinch_dist > pinch_threshold:
-            # Not pinched -> reset reference
-            self._volume_ref_center = None
-            return None
-
-        # Measure palm center movement for Y-axis (volume control)
-        if not hasattr(self, "_volume_ref_center") or self._volume_ref_center is None:
-            self._volume_ref_center = (cx, cy)
-            return None
-
-        ref_x, ref_y = self._volume_ref_center
-        dy = cy - ref_y  # +dy means moved down, -dy means moved up
-
-        # update reference every frame to allow continuous control
-        self._volume_ref_center = (cx, cy)
-
-        # Map dy to volume change
-        if abs(dy) < 5:  # ignore tiny jitter
-            return None
-
-        delta = abs(dy) * volume_scale
-        if dy < 0:
-            return ("VolumeUp", delta)
-        else:
-            return ("VolumeDown", delta)
 
     def detect_reserve(
         self,
@@ -388,68 +296,14 @@ class HandTracker:
         Detect reserved number gestures after open palm confirmation.
         Thumb must be closed (checked via line intersection).
         """
-        now = time()
-
-        # Check cooldown
-        if (
-            hasattr(self, "_reserve_cooldown_until")
-            and now < self._reserve_cooldown_until
-        ):
-            return None
-
-        # Require open palm confirmation
-        was_open = self.was_open_recently(
-            now=now, open_duration=open_duration, validity_duration=validity_duration
+        return _detect_reserve(
+            self,
+            open_duration=open_duration,
+            validity_duration=validity_duration,
+            cooldown=cooldown,
+            history_len=history_len,
+            majority_ratio=majority_ratio,
         )
-        if not was_open or not self.landmarks:
-            self._reserve_history = []
-            return None
-
-        lm = self.landmarks[0]
-        fs = _get_fingers_status(lm)  # [thumb, index, middle, ring, pinky]
-        if not fs:
-            return None
-
-        # Thumb closed check: line intersection
-        def ccw(A, B, C):
-            return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
-
-        def intersect(A, B, C, D):
-            return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
-        thumb_line = (lm[1], lm[4])  # base to tip
-        index_line = (lm[0], lm[5])  # wrist to base of index
-
-        if not intersect(*thumb_line, *index_line):
-            return None  # اگر شصت جمع نشده، خروجی None
-
-        fingers = fs[1:]  # ignore thumb
-        candidate = None
-        if fingers == [True, False, False, False]:
-            candidate = "Reserve1"
-        elif fingers == [True, True, False, False]:
-            candidate = "Reserve2"
-        elif fingers == [True, True, True, False]:
-            candidate = "Reserve3"
-
-        # Update history
-        if not hasattr(self, "_reserve_history"):
-            self._reserve_history = []
-        self._reserve_history.append(candidate)
-        if len(self._reserve_history) > history_len:
-            self._reserve_history.pop(0)
-
-        # Voting
-        if candidate:
-            count = self._reserve_history.count(candidate)
-            ratio = count / len(self._reserve_history)
-            if ratio >= majority_ratio:
-                # Confirmed gesture
-                self._reserve_cooldown_until = now + cooldown
-                self._reserve_history = []
-                return candidate
-
-        return None
 
     def detect_like_dislike(
         self,
@@ -469,88 +323,16 @@ class HandTracker:
 
         Returns: "Like", "Dislike", or None.
         """
-        from time import time
-
-        def ccw(A, B, C):
-            return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
-
-        def intersect(A, B, C, D):
-            """Return True if line AB intersects line CD"""
-            return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
-        now = time()
-
-        # Check cooldown
-        if hasattr(self, "_like_cooldown_until") and now < self._like_cooldown_until:
-            return None
-
-        # Require open palm confirmation
-        was_open = self.was_open_recently(
-            now=now, open_duration=open_duration, validity_duration=validity_duration
+        return _detect_like_dislike(
+            self,
+            open_duration=open_duration,
+            validity_duration=validity_duration,
+            thumb_threshold=thumb_threshold,
+            history_len=history_len,
+            majority_ratio=majority_ratio,
+            hold_time=hold_time,
+            cooldown=cooldown,
         )
-        if not was_open or not self.landmarks:
-            self._like_history = []
-            self._like_candidate = None
-            self._like_start_time = None
-            return None
-
-        lm = self.landmarks[0]
-        cx, cy = palm_center(lm)
-        thumb_tip = lm[4]
-
-        # Collect other fingertips (index, middle, ring, pinky)
-        other_tips = [lm[i] for i in [8, 12, 16, 20]]
-
-        # ====== شرط جدید: بررسی تقاطع ======
-        thumb_line = (lm[1], lm[4])  # شصت
-        index_wrist_line = (lm[0], lm[8])  # مچ ↔ نوک انگشت اشاره
-        if intersect(*thumb_line, *index_wrist_line):
-            return None  # اگر تقاطع داشت، هیچ ژستی تشخیص داده نشه
-
-        # Determine candidate gesture
-        candidate = None
-
-        # Like: thumb up, all others below thumb
-        if thumb_tip[1] < cy - thumb_threshold and all(
-            tip[1] > thumb_tip[1] for tip in other_tips
-        ):
-            candidate = "Like"
-        # Dislike: thumb down, all others above thumb
-        elif thumb_tip[1] > cy + thumb_threshold and all(
-            tip[1] < thumb_tip[1] for tip in other_tips
-        ):
-            candidate = "Dislike"
-
-        # Update history
-        if not hasattr(self, "_like_history"):
-            self._like_history = []
-        self._like_history.append(candidate)
-        if len(self._like_history) > history_len:
-            self._like_history.pop(0)
-
-        # Voting
-        if candidate:
-            count = self._like_history.count(candidate)
-            ratio = count / len(self._like_history)
-            if ratio >= majority_ratio:
-                # Check hold timer
-                if self._like_candidate != candidate:
-                    self._like_candidate = candidate
-                    self._like_start_time = now
-                    return None
-                elif now - self._like_start_time >= hold_time:
-                    # confirmed gesture
-                    self._like_cooldown_until = now + cooldown
-                    self._like_history = []
-                    self._like_candidate = None
-                    self._like_start_time = None
-                    return candidate
-        else:
-            # reset if no candidate
-            self._like_candidate = None
-            self._like_start_time = None
-
-        return None
 
     def detect_gesture(self):
         """

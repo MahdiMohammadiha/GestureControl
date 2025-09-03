@@ -1,4 +1,5 @@
-import time
+from time import time
+
 
 class GestureController:
     def __init__(self, music_player, cooldown=2.0):
@@ -8,7 +9,7 @@ class GestureController:
         self.cooldown = cooldown
 
     def handle_gesture(self, gesture):
-        now = time.time()
+        now = time()
 
         if gesture == "Next":
             if self._can_trigger("Next", now):

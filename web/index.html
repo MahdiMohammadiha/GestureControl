@@ -2,16 +2,50 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Web Camera Stream to WebSocket</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Camera Stream to WebSocket</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <button id="startBtn">Start Camera Stream</button>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
-  <script src="main.js"></script>
+    <div class="controls">
+        <label class="switch-row">
+            <label class="switch">
+                <input type="checkbox" id="toggleVideo">
+                <span class="slider"></span>
+            </label>
+            <span>Show Video</span>
+        </label>
+
+        <label class="switch-row">
+            <label class="switch">
+                <input type="checkbox" id="toggleStream" checked>
+                <span class="slider"></span>
+            </label>
+            <span>Streaming</span>
+        </label>
+
+        <label class="switch-row">
+            <label class="switch">
+                <input type="checkbox" id="wakeLockToggle">
+                <span class="slider"></span>
+            </label>
+            <span>Keep Screen On</span>
+        </label>
+
+        <label class="switch-row">
+            <label class="switch">
+                <input type="checkbox" id="closeConnection">
+                <span class="slider"></span>
+            </label>
+            <span>Connection</span>
+        </label>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <script src="main.js"></script>
 </body>
 
 </html>

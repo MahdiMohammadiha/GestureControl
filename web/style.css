@@ -8,6 +8,22 @@ body {
     height: 100vh;
     color: white;
     font-family: sans-serif;
+    font-size: 16px;  /* Default desktop font */
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;  /* Columnar */
+    gap: 15px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.switch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;  /* Text next to the switch */
 }
 
 video {
@@ -17,16 +33,89 @@ video {
 canvas {
     border: 2px solid #00ff99;
     border-radius: 10px;
+    width: 80vw;
+    max-width: 640px;
+    height: auto;
+    object-fit: contain;
+    display: none;
 }
 
-button {
-    padding: 10px 20px;
-    font-size: 16px;
-    margin-bottom: 20px;
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
     cursor: pointer;
-    border-radius: 5px;
-    border: none;
+    background-color: #555;
+    border-radius: 24px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: .3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+}
+
+input:checked + .slider {
     background-color: #00ff99;
-    color: #111;
-    font-weight: bold;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* =============================
+    Media Query for mobile
+============================= */
+@media (max-width: 768px) {
+    body {
+        font-size: 20px;
+    }
+
+    .switch-row {
+        font-size: 20px;
+        gap: 15px;
+    }
+
+    .switch {
+        width: 70px;
+        height: 34px;
+    }
+
+    .slider:before {
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(36px);
+    }
+
+    canvas {
+        width: 85vw;
+        max-width: 1280px;
+    }
 }

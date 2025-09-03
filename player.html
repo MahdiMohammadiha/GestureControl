@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fa">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Music Player</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #0b1220;
+            --accent: #06b6d4;
+            --text: #e6eef6;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #071026 0%, #0b1220 100%);
+            color: var(--text);
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .player {
+            width: 100%;
+            max-width: 520px;
+            background: var(--card);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .track-name {
+            font-size: 14px;
+            opacity: .9;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            font-weight: 700;
+            font-size: 16px;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: translateY(2px) scale(.98);
+        }
+
+        .btn.play {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(6, 182, 212, 0.06));
+            border-color: rgba(6, 182, 212, 0.9);
+            color: var(--accent);
+        }
+
+        .progress-wrap {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin: 0 8px 12px;
+        }
+
+        .time {
+            font-size: 12px;
+            width: 48px;
+            text-align: center;
+        }
+
+        .progress {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress .filled {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), #3b82f6);
+            border-radius: 8px;
+        }
+
+        .files {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            font-size: 13px;
+            color: var(--text);
+            background: transparent;
+            border: 1px dashed rgba(255, 255, 255, 0.04);
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+
+        .playlist {
+            max-height: 120px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 6px;
+            font-size: 13px;
+        }
+
+        .playlist div {
+            padding: 4px 6px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .playlist div.active {
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .playlist div:hover {
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .muted-note {
+            font-size: 12px;
+            opacity: .7;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        @media (max-width:420px) {
+            .btn {
+                width: 50px;
+                height: 50px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="player">
+        <div class="title">GC Music Player</div>
+        <div class="track-name" id="trackName">هیچ آهنگی بارگذاری نشده</div>
+
+        <div class="controls">
+            <button class="btn" id="prevBtn">⟸</button>
+            <button class="btn play" id="playBtn">▶</button>
+            <button class="btn" id="stopBtn">■</button>
+            <button class="btn" id="nextBtn">⟹</button>
+            <button class="btn" id="repeatBtn">🔁</button>
+            <button class="btn" id="shuffleBtn">🔀</button>
+            <button class="btn" id="volDownBtn">🔉</button>
+            <button class="btn" id="volUpBtn">🔊</button>
+        </div>
+
+        <div class="progress-wrap">
+            <div class="time" id="currentTime">0:00</div>
+            <div class="progress" id="progress">
+                <div class="filled" id="filled"></div>
+            </div>
+            <div class="time" id="duration">0:00</div>
+        </div>
+
+        <div class="files">
+            <label class="file-input">انتخاب فایل‌ها<input id="fileInput" type="file" accept="audio/*" multiple
+                    style="display:none" /></label>
+            <label class="file-input">انتخاب پوشه<input id="dirInput" type="file" accept="audio/*" multiple
+                    webkitdirectory style="display:none" /></label>
+            <button class="file-input" id="clearBtn">پاک کردن لیست</button>
+        </div>
+
+        <div class="playlist" id="playlist"></div>
+        <div class="muted-note">برای موبایل، ابتدا فایل‌ها یا پوشه را انتخاب کنید و سپس ▶ را بزنید</div>
+        <audio id="audio" preload="metadata"></audio>
+    </div>
+
+    <script>
+        (() => {
+            const audio = document.getElementById('audio');
+            const playBtn = document.getElementById('playBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const repeatBtn = document.getElementById('repeatBtn');
+            const shuffleBtn = document.getElementById('shuffleBtn');
+            const volUpBtn = document.getElementById('volUpBtn');
+            const volDownBtn = document.getElementById('volDownBtn');
+            const trackName = document.getElementById('trackName');
+            const currentTimeEl = document.getElementById('currentTime');
+            const durationEl = document.getElementById('duration');
+            const progress = document.getElementById('progress');
+            const filled = document.getElementById('filled');
+            const fileInput = document.getElementById('fileInput');
+            const dirInput = document.getElementById('dirInput');
+            const clearBtn = document.getElementById('clearBtn');
+            const playlistEl = document.getElementById('playlist');
+
+            let playlist = [], idx = 0, isPlaying = false;
+            let repeatMode = 0; // 0: off, 1: all, 2: one
+            let shuffleMode = false;
+            let shuffledIndices = [];
+
+            function formatTime(s) { if (!isFinite(s)) return '0:00'; const m = Math.floor(s / 60); const sec = Math.floor(s % 60).toString().padStart(2, '0'); return `${m}:${sec}`; }
+
+            function renderPlaylist() {
+                playlistEl.innerHTML = '';
+                playlist.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.textContent = item.name;
+                    if (i === idx) div.classList.add('active');
+                    div.addEventListener('click', () => { idx = i; loadTrack(idx); playTrack(); });
+                    playlistEl.appendChild(div);
+                });
+            }
+
+            function loadTrack(i) {
+                if (!playlist.length) { audio.removeAttribute('src'); trackName.textContent = 'هیچ آهنگی بارگذاری نشده'; durationEl.textContent = '0:00'; filled.style.width = '0%'; renderPlaylist(); return; }
+                idx = (i + playlist.length) % playlist.length;
+                if (shuffleMode && shuffledIndices.length) idx = shuffledIndices[idx % shuffledIndices.length];
+                audio.src = playlist[idx].url;
+                trackName.textContent = playlist[idx].name;
+                audio.load();
+                renderPlaylist();
+            }
+
+            function playTrack() { if (!playlist.length) return; audio.play().then(() => { isPlaying = true; playBtn.textContent = '⏸'; }).catch(() => { isPlaying = false; }); }
+            function pauseTrack() { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; }
+            function stopTrack() { audio.pause(); audio.currentTime = 0; isPlaying = false; playBtn.textContent = '▶'; }
+
+            function nextTrack() {
+                if (!playlist.length) return;
+                if (repeatMode === 2) { loadTrack(idx); playTrack(); return; }
+                loadTrack(idx + 1);
+                playTrack();
+            }
+            function prevTrack() { if (!playlist.length) return; loadTrack(idx - 1); playTrack(); }
+
+            audio.addEventListener('timeupdate', () => {
+                const cur = audio.currentTime, dur = audio.duration || 0;
+                currentTimeEl.textContent = formatTime(cur);
+                durationEl.textContent = formatTime(dur);
+                filled.style.width = dur ? (cur / dur * 100) + '%' : '0%';
+            });
+            audio.addEventListener('ended', () => {
+                if (repeatMode === 0 && idx === playlist.length - 1) { stopTrack(); return; }
+                nextTrack();
+            });
+            audio.addEventListener('loadedmetadata', () => { durationEl.textContent = formatTime(audio.duration); });
+
+            playBtn.addEventListener('click', () => { audio.paused ? playTrack() : pauseTrack(); });
+            stopBtn.addEventListener('click', stopTrack);
+            nextBtn.addEventListener('click', nextTrack);
+            prevBtn.addEventListener('click', prevTrack);
+
+            repeatBtn.addEventListener('click', () => {
+                repeatMode = (repeatMode + 1) % 3;
+                repeatBtn.textContent = repeatMode === 0 ? '🔁' : repeatMode === 1 ? '🔁' : '🔂';
+            });
+
+            shuffleBtn.addEventListener('click', () => {
+                shuffleMode = !shuffleMode;
+                shuffleBtn.style.background = shuffleMode ? 'rgba(6,182,212,0.12)' : 'transparent';
+                if (shuffleMode) {
+                    shuffledIndices = playlist.map((_, i) => i).sort(() => Math.random() - 0.5);
+                } else shuffledIndices = [];
+                renderPlaylist();
+            });
+
+            volUpBtn.addEventListener('click', () => { audio.volume = Math.min(1, audio.volume + 0.1); });
+            volDownBtn.addEventListener('click', () => { audio.volume = Math.max(0, audio.volume - 0.1); });
+
+            function handleFiles(files) {
+                const audioFiles = Array.from(files).filter(f => f.type.startsWith('audio'));
+                if (!audioFiles.length) return;
+                playlist.forEach(it => { if (it.fileObject && it.url) URL.revokeObjectURL(it.url); });
+                playlist = audioFiles.map(f => ({ name: f.name, url: URL.createObjectURL(f), fileObject: true }));
+                loadTrack(0); playTrack();
+            }
+
+            fileInput.addEventListener('change', ev => handleFiles(ev.target.files));
+            dirInput.addEventListener('change', ev => handleFiles(ev.target.files));
+            clearBtn.addEventListener('click', () => {
+                playlist.forEach(it => { if (it.fileObject && it.url) URL.revokeObjectURL(it.url); });
+                playlist = []; audio.pause(); audio.removeAttribute('src'); trackName.textContent = 'هیچ آهنگی بارگذاری نشده';
+                filled.style.width = '0%'; durationEl.textContent = '0:00'; currentTimeEl.textContent = '0:00'; playBtn.textContent = '▶';
+                renderPlaylist();
+            });
+
+            progress.addEventListener('click', e => {
+                const rect = progress.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const pct = Math.max(0, Math.min(1, x / rect.width));
+                if (audio.duration) audio.currentTime = pct * audio.duration;
+            });
+
+        })();
+    </script>
+</body>
+
+</html>

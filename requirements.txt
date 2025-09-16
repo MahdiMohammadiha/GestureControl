@@ -4,3 +4,9 @@ mediapipe<0.11
 pygame<2.7
 pyqt6<6.10
 playsound==1.2.2
+jinja2<3.1
+fastapi<0.116
+pillow<11.3
+qrcode<8.2
+websocket<0.2
+websockets<15.0

@@ -54,7 +54,7 @@ def detect_reserve(
     index_line = (lm[0], lm[5])  # wrist to base of index
 
     if not intersect(*thumb_line, *index_line):
-        return None  # اگر شصت جمع نشده، خروجی None
+        return None  # If the thumb is retracted, the output is None.
 
     fingers = fs[1:]  # ignore thumb
     candidate = None

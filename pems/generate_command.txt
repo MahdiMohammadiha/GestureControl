@@ -1,1 +1,1 @@
-mkdir -p pem; openssl req -x509 -newkey rsa:4096 -keyout pem/key.pem -out pem/cert.pem -days 365 -nodes
+mkdir -p pems; openssl req -x509 -newkey rsa:4096 -keyout pems/key.pem -out pems/cert.pem -days 365 -nodes

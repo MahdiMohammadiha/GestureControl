@@ -208,3 +208,6 @@ __marimo__/
 
 # SSL certificates
 *.pem
+
+# Local databases
+*.db*

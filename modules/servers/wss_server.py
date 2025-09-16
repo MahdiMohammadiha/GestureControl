@@ -13,22 +13,19 @@ ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 ssl_context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
 
 connected_clients = {}  # websocket -> client_id
+latest_frames = {}      # client_id -> frame (numpy array)
 
 
 async def handler(websocket):
-    global connected_clients
+    global connected_clients, latest_frames
 
-    # Limit the number of clients
     if len(connected_clients) >= MAX_CLIENTS:
         print("Max clients reached, rejecting new client.")
         await websocket.close()
         return
 
-    # Assign a unique ID
-    client_id = str(uuid.uuid4())[:8]  # First 8 characters of UUID
+    client_id = str(uuid.uuid4())[:8]
     connected_clients[websocket] = client_id
-    window_name = f"Camera Stream {client_id}"
-
     print(f"New client connected! ID={client_id}, Total clients: {len(connected_clients)}")
 
     try:
@@ -43,11 +40,8 @@ async def handler(websocket):
             if isinstance(message, (bytes, bytearray)):
                 nparr = np.frombuffer(message, np.uint8)
                 frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
                 if frame is not None:
-                    cv2.imshow(window_name, frame)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        break
+                    latest_frames[client_id] = frame
             else:
                 print(f"Client {client_id} sent non-binary message:", message)
 
@@ -55,15 +49,16 @@ async def handler(websocket):
         print(f"Client {client_id} disconnected")
     finally:
         connected_clients.pop(websocket, None)
-        cv2.destroyWindow(window_name)
+        latest_frames.pop(client_id, None)
         print(f"Client {client_id} removed. Total clients: {len(connected_clients)}")
 
 
-async def main():
-    start_server = await websockets.serve(handler, "0.0.0.0", 12345, ssl=ssl_context)
+async def start_server():
+    start_server = await websockets.serve(
+        handler,
+        "0.0.0.0",
+        12345,
+        ssl=ssl_context,
+    )
     print("WSS server started on port 12345")
     await start_server.wait_closed()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
